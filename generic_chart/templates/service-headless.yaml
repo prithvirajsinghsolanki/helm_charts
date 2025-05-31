@@ -1,0 +1,28 @@
+{{- if and .Values.service.create (eq .Values.deploymentType "StatefulSet") }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-headless
+  namespace: {{ .Values.specs.namespace }}
+  labels:
+    app: {{ .Release.Name }}
+    release: {{ .Release.Name }}
+    {{- range $key, $value := .Values.specs.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- if and .Values.service.annotationsEnabled .Values.specs.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.specs.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  clusterIP: None  # Headless service!
+  publishNotReadyAddresses: true  # Optional: allow DNS before pod is ready
+  selector:
+    app: {{ .Release.Name }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort | default .Values.service.port }}
+      name: http
+{{- end }}

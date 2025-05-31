@@ -1,0 +1,134 @@
+{{- if eq .Values.specs.deploymentType "Deployment" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.specs.namespace }}
+  labels:
+    app: {{ .Release.Name }}
+    release: {{ .Release.Name }}
+    {{- range $key, $value := .Values.specs.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- if and .Values.service.annotationsEnabled .Values.specs.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.specs.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.specs.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ .Release.Name }}
+      {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ .name | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if and .Values.securityContext.enabled .Values.securityContext.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.securityContext.podSecurityContext | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          {{- if and .Values.securityContext.enabled .Values.securityContext.containerSecurityContext }}
+          securityContext:
+            {{- toYaml .Values.securityContext.containerSecurityContext | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if and .Values.environment.enabled .Values.environment.content }}
+            {{- range $key, $value := .Values.environment.content }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if and (eq .Values.secret.enabled true) (eq .Values.secretVolume.enabled false) (.Values.secret.content) }}
+            {{- range $key, $_ := .Values.secret.content }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-secret
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+            {{- if and .Values.configmap.enabled .Values.configmap.data }}
+            {{- range $key, $value := .Values.configmap.data }}
+            - name: {{ $key }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $.Release.Name }}-cm
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+          {{- range .Values.persistence.volumes }}
+            {{- if .enabled }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if and (eq .Values.secret.enabled true) (eq .Values.secretVolume.enabled true) }}
+          volumeMounts:
+            - mountPath: {{ .Values.secretVolume.mountPath | default "/app/config" }}
+              name: {{ .Release.Name }}-secret
+              readOnly: true
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        {{- range .Values.persistence.volumes }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-%s-pvc" $.Release.Name .name }}
+        {{- end }}
+      {{- end }}
+      {{- if and (eq .Values.secret.enabled true) (eq .Values.secretVolume.enabled true) }}
+      volumes:
+        - name: {{ .Release.Name }}-secret
+          secret:
+            secretName: {{ .Release.Name }}-secret
+      {{- end }}
+    nodeSelector:
+      type: {{ .Values.specs.nodeSelector.type | default "default-type" }}
+{{- end }}

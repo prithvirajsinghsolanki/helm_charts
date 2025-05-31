@@ -1,0 +1,21 @@
+{{- if .Values.persistence.enabled }}
+  {{- range .Values.persistence.volumes }}
+    {{- if .name }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-%s-pvc" $.Release.Name .name }}
+  labels:
+    app: {{ $.Release.Name }}
+spec:
+  accessModes:
+    - {{ .accessMode }}
+  resources:
+    requests:
+      storage: {{ .size }}
+  storageClassName: {{ .storageClass }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+

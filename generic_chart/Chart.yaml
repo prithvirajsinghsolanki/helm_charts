@@ -1,0 +1,8 @@
+# Chart.yaml for the Base Chart
+
+apiVersion: v1
+name: mynginx
+description: A Helm chart for a simple web application
+type: application
+version: 0.1.0
+appVersion: "1.0"

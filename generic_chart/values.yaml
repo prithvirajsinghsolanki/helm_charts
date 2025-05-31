@@ -1,0 +1,167 @@
+# This is a base chart will be used to deploy all
+## Define number of Pod replica's to run.
+
+## General specification for application.
+specs:
+  replicas: 1
+  deploymentType: StatefulSet ## Deployment, StatefulSet.
+  namespace: "default"
+  ## Label definations in Key: Value form default label with "app: {{ .Release.Name }}" and release: "{{ .Release.Name }}" is already exist there templates.
+  labels:
+   ## KEY: VALUES
+    environment: "test"
+    appname: "nginx"
+
+  annotations:
+   ## KEY: VALUES
+    test: "test"
+    test2: "test2"
+
+  nodeSelector:
+    type: ""
+
+## Image registry and location.
+image:
+  registry: "docker.io"
+  repository: "nginx"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+## Environment variables configuration for application for application./
+environment:
+  enabled: false
+  content:
+    ## Key: "Value"
+    DBHosst: "0.0.0.0"
+    DBNaame: "prithvi"
+    DBPaassword: ""
+    DBUsser: "root"
+
+## ConfigMap data to pass in the pod.
+configmap:
+  enabled: false
+  data:
+    APP_ENV: "test"
+    LOG_LEVEL: "info"
+    API_URL: "https://api.example.com"
+
+## Secrets environment variables to pass in the pod.
+secret:
+  enabled: true
+  content:
+    ## Key: "Value" in base64 encoded format.
+    DBHost: "MC4wLjAuMA=="
+    DBName: "cHJpdGh2aQ=="
+    DBPassword: ""
+    DBUser: "cm9vdA=="
+
+## Mounting secrets as volume. Example:  "optional:configtree:/app/config/", Define secrets in secret section above.
+secretVolume:
+  enabled: false ## If true it will create secret with {{ .Release.Name }}-config-secret. If false {{ .Release.Name }}-secret name will be used to create secret.
+  mountPath: "" ## Specify mountPath for secret config volume default is "/app/config"
+
+
+## Service specification.
+service:
+  create: true
+  type: NodePort  ## Options: ClusterIP, NodePort, LoadBalancer.
+  nodePort: ""  ## Specify nodePort from port range between 30000–32767.
+  targetPort: 80
+  port: 80
+  annotationsEnabled: false
+  # headlessEnabled: false ## If true it will create a headless service.
+
+## imagePullSecret specification.
+imagePullSecrets:
+  - name: ""
+
+## Readiness probe configuration.
+readinessProbe:
+  enabled: false
+  httpGet:
+    path: /healthz
+    port: 80  ## Numerical value only, NO string "".
+  initialDelaySeconds: 5  ## Numerical value only, NO string "".
+  periodSeconds: 10  ## Numerical value only, NO string "".
+  timeoutSeconds: 2  ## Numerical value only, NO string "".
+  failureThreshold: 3  ## Numerical value only, NO string "".
+  successThreshold: 1  ## Numerical value only, NO string "".
+
+## Liveness probe configuration.
+livenessProbe:
+  enabled: false
+  httpGet:
+    path: /healthz
+    port: 80  ## Numerical value only, NO string "".
+  initialDelaySeconds: 15  ## Numerical value only, NO string "".
+  periodSeconds: 20  ## Numerical value only, NO string "".
+  timeoutSeconds: 2  ## Numerical value only, NO string "".
+  failureThreshold: 3  ## Numerical value only, NO string "".
+  successThreshold: 1  ## Numerical value only, NO string "".
+
+## Define persistence for the workload.
+persistence:
+  enabled: true
+  volumes:  ## Define all the volumes under volumes section as below example.
+  - name: volume01
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    storageClass: standard
+    mountPath: /data
+
+  - name: volume02
+    accessMode: ReadWriteOnce
+    size: 512Mi
+    storageClass: fast
+    mountPath: /cache
+
+## Set create: true to create service account either keep it false.
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+## RBAC
+rbac:
+  create: false
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["services"]
+      verbs: ["get", "list"]
+
+## Resource specification for Pods.
+resources:
+  # Define resource requests — the minimum resources the container is guaranteed.
+  # Kubernetes uses this to schedule the pod on a node with enough capacity.
+  requests:
+    cpu: "500m"      # Example: "100m" = 0.1 core. Leave empty to not set.
+    memory: "128Mi"   # Example: "128Mi". Leave empty to not set.
+
+  # Define resource limits — the maximum resources the container is allowed to use.
+  # The container will be throttled or terminated if it exceeds these values.
+  limits:
+    cpu: "500m"      # Example: "500m" = 0.5 core. Leave empty to not set.
+    memory: "256Mi"   # Example: "256Mi". Leave empty to not set.
+
+## Security context for Pod and Container .
+securityContext:
+  enabled: false
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+    fsGroupChangePolicy: "OnRootMismatch"
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
