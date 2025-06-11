@@ -32,7 +32,7 @@ environment:
   enabled: false
   content:
     ## Key: "Value"
-    DBHosst: "0.0.0.0"
+    DBHost: "0.0.0.0"
     DBNaame: "prithvi"
     DBPaassword: ""
     DBUsser: "root"
